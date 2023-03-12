@@ -1,0 +1,104 @@
+﻿@page "/"
+
+@using Microsoft.Extensions.Logging;
+@using WebApp.Interfaces;
+@inject IBlobService BlobService
+
+
+<PageTitle>Counter</PageTitle>
+
+<div class="for-form">
+    <div class="form-itself">
+        <form style="width:100%">
+            <div class="form-group row">
+                <label for="inputEmail" class="col-sm-2 col-form-label">Email</label>
+                <div class="col-sm-5">
+                    <input type="email" class="form-control" id="inputEmail">
+                </div>
+            </div>
+            <div class="form-group row">
+                <label for="inputDocument" class="col-sm-2 col-form-label">Document</label>
+                <div class="col-sm-5">
+                    <div class="input-group">
+                        <div class="custom-file" style="border: 1px; border-color: grey; border-style: solid;">
+                            <InputFile OnChange="@OnInputFileChange" disabled="@isLoading" single accept=".docx" class="custom-file-input" style="Width:100%" />
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+<div class="send-buttons">
+    <button type="button" @onclick="OnUploadSubmit" disabled="@isLoading" class="btn btn-outline-primary" style="margin-right:15px">Send</button>
+</div>
+
+
+@code {
+    private List<IBrowserFile> loadedFiles = new();
+    private bool isLoading;
+
+
+    IReadOnlyList<IBrowserFile> selectedFiles;
+
+    private string warninngMessage = "";
+    private string displayMessage = "";
+
+    private string DocPath { get; set; } = "";
+
+    private async void LoadFiles(InputFileChangeEventArgs e)
+    {
+        isLoading = true;
+        loadedFiles.Clear();
+
+        foreach (var file in e.GetMultipleFiles())
+        {
+            try
+            {
+                loadedFiles.Add(file);
+
+                //var trustedFileNameForFileStorage = Path.GetRandomFileName();
+            }
+            catch (Exception ex)
+            {
+                //Logger.LogError("File: {Filename} Error: {Error}", 
+                //    file.Name, ex.Message);
+            }
+        }
+
+        isLoading = false;
+    }
+
+    private void OnInputFileChange(InputFileChangeEventArgs e)
+    {
+        selectedFiles = e.GetMultipleFiles();
+        this.StateHasChanged();
+    }
+
+    private async void OnUploadSubmit()
+    {
+        isLoading = true;
+        foreach (var file in selectedFiles)
+        {
+            try
+            {
+                var trustedFileNameForFileStorage = file.Name;
+                var blobUrl = await BlobService.UploadFileToBlobAsync(trustedFileNameForFileStorage, file.ContentType, file.OpenReadStream(20971520));
+                if (blobUrl != null)
+                {
+                    displayMessage = trustedFileNameForFileStorage + " Uploaded!!";
+                }
+                else
+                    warninngMessage = "File Upload failed, Please try again!!";
+
+            }
+            catch (Exception ex)
+            {
+                warninngMessage = "File Upload failed, Please try again!!";
+            }
+        }
+
+        isLoading = false;
+        this.StateHasChanged();
+    }
+}
